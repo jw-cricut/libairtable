@@ -59,61 +59,85 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
     shared_ptr<const JSONObject> json,
     bool parse_response) {
 
-  HTTPConnection conn(
-      this->base,
-      this->dns_base,
-      this->hostname.c_str(),
-      this->port,
-      this->ssl_ctx);
-  conn.set_retries(this->max_retries);
-  conn.set_timeout(this->request_timeout);
+  for (size_t x = 0; x < this->max_retries; x++) {
+    bool is_final_try = (x == this->max_retries - 1);
 
-  HTTPRequest req(this->base);
+    HTTPConnection conn(
+        this->base,
+        this->dns_base,
+        this->hostname.c_str(),
+        this->port,
+        this->ssl_ctx);
+    conn.set_timeout(this->request_timeout);
 
-  string auth_header = "Bearer " + this->api_key;
-  req.add_output_header("Host", this->hostname.c_str());
-  req.add_output_header("Connection", "close");
-  req.add_output_header("Authorization", auth_header.c_str());
-  if (!this->client_secret.empty()) {
-    req.add_output_header(
-        "X-Airtable-Client-Secret", this->client_secret.c_str());
+    HTTPRequest req(this->base);
+
+    string auth_header = "Bearer " + this->api_key;
+    req.add_output_header("Host", this->hostname.c_str());
+    req.add_output_header("Connection", "close");
+    req.add_output_header("Authorization", auth_header.c_str());
+    if (!this->client_secret.empty()) {
+      req.add_output_header(
+          "X-Airtable-Client-Secret", this->client_secret.c_str());
+    }
+
+    string serialized_post_data;
+    if (json.get()) {
+      serialized_post_data = json->serialize();
+
+      req.get_output_buffer().add_reference(
+          serialized_post_data.data(), serialized_post_data.size());
+
+      string content_length = string_printf("%zu", serialized_post_data.size());
+      req.add_output_header("Content-Type", "application/json");
+      req.add_output_header("Content-Length", content_length.c_str());
+    }
+
+    string request_path = escape_url(path, false);
+    if (!query.empty()) {
+      request_path += '?';
+      request_path += escape_url(query, true);
+    }
+
+    co_await conn.send_request(req, method, request_path.c_str());
+
+    int response_code = req.get_response_code();
+    if ((response_code == 0) ||
+        ((response_code >= 500) && (response_code <= 599))) {
+      // 0 means some non-HTTP error occurred, like connect() failed or SSL
+      // negotiation failed. 5xx means a server error occurred. In either case,
+      // we'll retry again immediately.
+      if (is_final_try) {
+        throw runtime_error(response_code == 0
+            ? "http request did not complete"
+            : string_printf("api returned http %d", response_code));
+      }
+      continue;
+
+    } else if (response_code == 429 && !is_final_try) {
+      // Rate-limited. We should wait at least 30 seconds before trying again.
+      // If this is the final try, don't wait and just throw the 429 to the
+      // caller like all other client (4xx) error codes.
+      // TODO: We probably should make this configurable; callers may not want
+      // to wait this long.
+      co_await base.sleep(30000000);
+      continue;
+
+    } else if (response_code != 200) {
+      throw runtime_error(string_printf("api returned http %d", response_code));
+    }
+
+    if (parse_response) {
+      // TODO: it would be nice to do this without linearizing the input buffer
+      EvBuffer in_buf = req.get_input_buffer();
+      string in_data = in_buf.remove(in_buf.get_length());
+      co_return JSONObject::parse(in_data);
+    } else {
+      co_return nullptr;
+    }
   }
 
-  string serialized_post_data;
-  if (json.get()) {
-    serialized_post_data = json->serialize();
-
-    req.get_output_buffer().add_reference(
-        serialized_post_data.data(), serialized_post_data.size());
-
-    string content_length = string_printf("%zu", serialized_post_data.size());
-    req.add_output_header("Content-Type", "application/json");
-    req.add_output_header("Content-Length", content_length.c_str());
-  }
-
-  string request_path = escape_url(path, false);
-  if (!query.empty()) {
-    request_path += '?';
-    request_path += escape_url(query, true);
-  }
-
-  co_await conn.send_request(req, method, request_path.c_str());
-
-  int response_code = req.get_response_code();
-  if (response_code == 0) {
-    throw runtime_error("http request did not complete");
-  } else if (response_code != 200) {
-    throw runtime_error(string_printf("api returned http %d", response_code));
-  }
-
-  if (parse_response) {
-    // TODO: it would be nice to do this without linearizing the input buffer
-    EvBuffer in_buf = req.get_input_buffer();
-    string in_data = in_buf.remove(in_buf.get_length());
-    co_return JSONObject::parse(in_data);
-  } else {
-    co_return nullptr;
-  }
+  throw logic_error("request loop terminated without throwing or returning");
 }
 
 

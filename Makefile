@@ -19,8 +19,8 @@ install-cli: airtable
 	cp airtable $(INSTALL_DIR)/bin/
 
 install-lib: libairtable.a
-	mkdir -p $(INSTALL_DIR)/include/libairtable
-	cp -r *.hh $(INSTALL_DIR)/include/libairtable/
+	mkdir -p $(INSTALL_DIR)/include/airtable
+	cp -r *.hh $(INSTALL_DIR)/include/airtable/
 	cp libairtable.a $(INSTALL_DIR)/lib/
 
 libairtable.a: $(OBJECTS)

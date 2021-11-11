@@ -98,7 +98,7 @@ DetachedTask run_command(
   }
 
   EvDNSBase dns_base(base);
-  AirtableClient client(base, dns_base, api_key);
+  AirtableClient client(base, dns_base, api_key, client_secret);
 
   Command command = Command::ListRecords;
   AirtableClient::ListRecordsOptions list_records_options;
@@ -198,8 +198,8 @@ DetachedTask run_command(
       for (const auto& base_info : base_infos) {
         JSONObject::dict_type base_dict;
         base_dict.emplace("id", make_json_str(base_info.base_id));
-        base_dict.emplace("name", make_json_str(base_info.base_id));
-        base_dict.emplace("permission_level", make_json_str(base_info.base_id));
+        base_dict.emplace("name", make_json_str(base_info.name));
+        base_dict.emplace("permission_level", make_json_str(base_info.permission_level));
         base_jsons.emplace_back(new JSONObject(move(base_dict)));
       }
       auto output_json = make_json_list(move(base_jsons));
@@ -209,8 +209,42 @@ DetachedTask run_command(
 
     case Command::GetBaseSchema: {
       auto table_schemas = co_await client.get_base_schema(base_id);
-      // TODO
-      throw runtime_error("get-base-schema is not yet implemented");
+
+      JSONObject::dict_type root_dict;
+      for (const auto& table_it : table_schemas) {
+        const auto& table = table_it.second;
+        JSONObject::dict_type table_dict;
+        table_dict.emplace("name", make_json_str(table.name));
+        table_dict.emplace("primary_field_id", make_json_str(table.primary_field_id));
+
+        JSONObject::dict_type fields_dict;
+        for (const auto& field_it : table.fields) {
+          const auto& field = field_it.second;
+          JSONObject::dict_type field_dict;
+          field_dict.emplace("name", make_json_str(field.name));
+          field_dict.emplace("type", make_json_str(field.type));
+          if (field.options.get()) {
+            field_dict.emplace("options", field.options);
+          }
+          fields_dict.emplace(field_it.first, new JSONObject(move(field_dict)));
+        }
+        table_dict.emplace("fields", new JSONObject(move(fields_dict)));
+
+        JSONObject::dict_type views_dict;
+        for (const auto& view_it : table.views) {
+          const auto& view = view_it.second;
+          JSONObject::dict_type view_dict;
+          view_dict.emplace("name", make_json_str(view.name));
+          view_dict.emplace("type", make_json_str(view.type));
+          views_dict.emplace(view_it.first, new JSONObject(move(view_dict)));
+        }
+        table_dict.emplace("views", new JSONObject(move(views_dict)));
+
+        root_dict.emplace(table_it.first, new JSONObject(move(table_dict)));
+      }
+
+      shared_ptr<JSONObject> root(new JSONObject(move(root_dict)));
+      write_json(root);
       break;
     }
 

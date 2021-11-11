@@ -143,6 +143,10 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
 
 
 AsyncTask<vector<BaseInfo>> AirtableClient::list_bases() {
+  if (this->client_secret.empty()) {
+    throw runtime_error("a client secret is required for list_bases");
+  }
+
   shared_ptr<JSONObject> response_json = co_await this->make_api_call(
       EVHTTP_REQ_GET, "/v0/meta/bases");
 
@@ -160,6 +164,10 @@ AsyncTask<vector<BaseInfo>> AirtableClient::list_bases() {
 
 AsyncTask<unordered_map<string, TableSchema>>
 AirtableClient::get_base_schema(const string& base_id) {
+  if (this->client_secret.empty()) {
+    throw runtime_error("a client secret is requirefd for get_base_schema");
+  }
+
   shared_ptr<JSONObject> response_json = co_await this->make_api_call(
       EVHTTP_REQ_GET, "/v0/meta/bases/" + base_id + "/tables");
 
@@ -171,7 +179,7 @@ AirtableClient::get_base_schema(const string& base_id) {
     table.name = table_json->at("name")->as_string();
     table.primary_field_id = table_json->at("primaryFieldId")->as_string();
     for (const auto& field_json : table_json->at("fields")->as_list()) {
-      TableSchema::FieldSchema field = table.fields[field_json->at("id")->as_string()];
+      TableSchema::FieldSchema& field = table.fields[field_json->at("id")->as_string()];
       field.name = field_json->at("name")->as_string();
       field.type = field_json->at("type")->as_string();
       try {
@@ -179,7 +187,7 @@ AirtableClient::get_base_schema(const string& base_id) {
       } catch (const JSONObject::key_error&) { }
     }
     for (const auto& view_json : table_json->at("views")->as_list()) {
-      TableSchema::ViewSchema view = table.views[view_json->at("id")->as_string()];
+      TableSchema::ViewSchema& view = table.views[view_json->at("id")->as_string()];
       view.name = view_json->at("name")->as_string();
       view.type = view_json->at("type")->as_string();
     }

@@ -86,8 +86,8 @@ void output_records_list(vector<Record> records) {
   write_json(record_list_json);
 }
 
-DetachedTask run_command(
-    EventBase& base,
+EventAsync::DetachedTask run_command(
+    EventAsync::Base& base,
     const string& api_key,
     const string& client_secret,
     int argc,
@@ -97,7 +97,7 @@ DetachedTask run_command(
     throw invalid_argument("not enough arguments");
   }
 
-  EvDNSBase dns_base(base);
+  EventAsync::DNSBase dns_base(base);
   AirtableClient client(base, dns_base, api_key, client_secret);
 
   Command command = Command::ListRecords;
@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
   SSL_load_error_strings();
   OpenSSL_add_all_algorithms();
 
-  EventBase base;
+  EventAsync::Base base;
   run_command(base, api_key, client_secret, argc, argv);
   base.run();
 

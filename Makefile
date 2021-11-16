@@ -1,6 +1,6 @@
 CXX=g++ -fPIC
 CXXFLAGS=-I/opt/homebrew/opt/openssl@1.1/include -I/opt/homebrew/include -I/usr/local/opt/openssl@1.1/include -I/opt/local/include -I/usr/local/include -std=c++20 -g -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H -Wall -Werror
-LDFLAGS=-L/opt/homebrew/opt/openssl@1.1/lib -L/opt/homebrew/lib -L/usr/local/opt/openssl@1.1/lib -L/opt/local/lib -L/usr/local/lib -lphosg -levent -levent-async -lssl -lcrypto -levent_openssl -g -std=c++20 -lstdc++
+LDFLAGS=-L/opt/homebrew/opt/openssl@1.1/lib -L/opt/homebrew/lib -L/usr/local/opt/openssl@1.1/lib -L/opt/local/lib -L/usr/local/lib -lphosg -levent -levent-async -lhttp-async -lssl -lcrypto -levent_openssl -g -std=c++20 -lstdc++
 OBJECTS=FieldTypes.o AirtableClient.o
 
 ifeq ($(shell uname -s),Darwin)

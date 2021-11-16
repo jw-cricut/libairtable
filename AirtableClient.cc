@@ -17,8 +17,8 @@ AirtableClient::ListRecordsOptions::ListRecordsOptions()
 
 
 AirtableClient::AirtableClient(
-    EventBase& base,
-    EvDNSBase& dns_base,
+    EventAsync::Base& base,
+    EventAsync::DNSBase& dns_base,
     const string& api_key,
     const string& client_secret,
     SSL_CTX* ssl_ctx,
@@ -34,7 +34,7 @@ AirtableClient::AirtableClient(
 
   if (!this->ssl_ctx) {
     this->owned_ssl_ctx = true;
-    this->ssl_ctx = HTTPConnection::create_default_ssl_ctx();
+    this->ssl_ctx = EventAsync::HTTP::Connection::create_default_ssl_ctx();
   } else {
     this->owned_ssl_ctx = false;
   }
@@ -52,7 +52,7 @@ AirtableClient::~AirtableClient() {
 
 
 
-AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
+EventAsync::Task<shared_ptr<JSONObject>> AirtableClient::make_api_call(
     evhttp_cmd_type method,
     const string& path,
     const string& query,
@@ -62,7 +62,7 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
   for (size_t x = 0; x < this->max_retries; x++) {
     bool is_final_try = (x == this->max_retries - 1);
 
-    HTTPConnection conn(
+    EventAsync::HTTP::Connection conn(
         this->base,
         this->dns_base,
         this->hostname.c_str(),
@@ -70,7 +70,7 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
         this->ssl_ctx);
     conn.set_timeout(this->request_timeout);
 
-    HTTPRequest req(this->base);
+    EventAsync::HTTP::Request req(this->base);
 
     string auth_header = "Bearer " + this->api_key;
     req.add_output_header("Host", this->hostname.c_str());
@@ -129,7 +129,7 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
 
     if (parse_response) {
       // TODO: it would be nice to do this without linearizing the input buffer
-      EvBuffer in_buf = req.get_input_buffer();
+      auto in_buf = req.get_input_buffer();
       string in_data = in_buf.remove(in_buf.get_length());
       co_return JSONObject::parse(in_data);
     } else {
@@ -142,7 +142,7 @@ AsyncTask<shared_ptr<JSONObject>> AirtableClient::make_api_call(
 
 
 
-AsyncTask<vector<BaseInfo>> AirtableClient::list_bases() {
+EventAsync::Task<vector<BaseInfo>> AirtableClient::list_bases() {
   if (this->client_secret.empty()) {
     throw runtime_error("a client secret is required for list_bases");
   }
@@ -162,7 +162,7 @@ AsyncTask<vector<BaseInfo>> AirtableClient::list_bases() {
   co_return ret;
 }
 
-AsyncTask<unordered_map<string, TableSchema>>
+EventAsync::Task<unordered_map<string, TableSchema>>
 AirtableClient::get_base_schema(const string& base_id) {
   if (this->client_secret.empty()) {
     throw runtime_error("a client secret is requirefd for get_base_schema");
@@ -198,7 +198,7 @@ AirtableClient::get_base_schema(const string& base_id) {
 
 
 
-AsyncTask<pair<vector<Record>, string>> AirtableClient::list_records_page(
+EventAsync::Task<pair<vector<Record>, string>> AirtableClient::list_records_page(
     const string& base_id,
     const string& table_name,
     const ListRecordsOptions* options,
@@ -258,7 +258,7 @@ AsyncTask<pair<vector<Record>, string>> AirtableClient::list_records_page(
   co_return make_pair(move(ret), move(next_offset));
 }
 
-AsyncTask<vector<Record>> AirtableClient::list_records(
+EventAsync::Task<vector<Record>> AirtableClient::list_records(
     const string& base_id,
     const string& table_name,
     const ListRecordsOptions* options) {
@@ -279,7 +279,7 @@ AsyncTask<vector<Record>> AirtableClient::list_records(
 
 
 
-AsyncTask<Record> AirtableClient::get_record(
+EventAsync::Task<Record> AirtableClient::get_record(
     const string& base_id,
     const string& table_name,
     const string& record_id) {
@@ -290,7 +290,7 @@ AsyncTask<Record> AirtableClient::get_record(
 
 
 
-AsyncTask<vector<string>> AirtableClient::create_records(
+EventAsync::Task<vector<string>> AirtableClient::create_records(
     const string& base_id,
     const string& table_name,
     const vector<unordered_map<string, shared_ptr<Field>>>& contents,
@@ -323,7 +323,7 @@ AsyncTask<vector<string>> AirtableClient::create_records(
 
 
 
-AsyncTask<vector<Record>> AirtableClient::update_records(
+EventAsync::Task<vector<Record>> AirtableClient::update_records(
     const string& base_id,
     const string& table_name,
     const unordered_map<string, unordered_map<string, shared_ptr<Field>>>& contents,
@@ -359,7 +359,7 @@ AsyncTask<vector<Record>> AirtableClient::update_records(
 
 
 
-AsyncTask<unordered_map<string, bool>> AirtableClient::delete_records(
+EventAsync::Task<unordered_map<string, bool>> AirtableClient::delete_records(
     const string& base_id,
     const string& table_name,
     const vector<string>& record_ids,

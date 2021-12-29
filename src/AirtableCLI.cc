@@ -16,7 +16,7 @@ using namespace std;
 
 void print_usage() {
   fputs("\
-Usage: airtable <command> [options]\n\
+Usage: airtable-cli <command> [options]\n\
 \n\
 Commands:\n\
   list-bases: Lists up to 1000 bases accessible using the given API key.\n\

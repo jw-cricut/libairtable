@@ -1,4 +1,15 @@
+# Finder files (macOS)
 .DS_Store
-airtable
+
+# Build products
 libairtable.a
-*.o
+airtable-cli
+
+# CMake files
+CMakeCache.txt
+CMakeFiles
+Makefile
+CTestTestFile.cmake
+Testing
+cmake_install.cmake
+install_manifest.txt

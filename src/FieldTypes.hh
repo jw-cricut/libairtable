@@ -3,17 +3,13 @@
 #include <stdint.h>
 
 #include <memory>
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <phosg/JSON.hh>
-
-
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 uint64_t parse_airtable_time(const std::string& time);
 std::string format_airtable_time(uint64_t time);
-
-
 
 class Field {
 public:
@@ -32,7 +28,7 @@ public:
 
   ValueType type;
 
-  virtual std::shared_ptr<JSONObject> to_json() const = 0;
+  virtual phosg::JSON to_json() const = 0;
 
   virtual ~Field() = default;
 
@@ -48,7 +44,7 @@ public:
   explicit StringField(const std::string& value);
   explicit StringField(std::string&& value);
   virtual ~StringField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class IntegerField : public Field {
@@ -58,7 +54,7 @@ public:
   IntegerField();
   explicit IntegerField(int64_t value);
   virtual ~IntegerField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class FloatField : public Field {
@@ -68,7 +64,7 @@ public:
   FloatField();
   explicit FloatField(double value);
   virtual ~FloatField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class ButtonField : public Field {
@@ -80,7 +76,7 @@ public:
   ButtonField(const std::string& url, const std::string& label);
   ButtonField(std::string&& url, std::string&& label);
   virtual ~ButtonField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class CheckboxField : public Field {
@@ -90,7 +86,7 @@ public:
   CheckboxField();
   explicit CheckboxField(bool value);
   virtual ~CheckboxField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class StringArrayField : public Field {
@@ -101,7 +97,7 @@ public:
   explicit StringArrayField(const std::vector<std::string>& value);
   explicit StringArrayField(std::vector<std::string>&& value);
   virtual ~StringArrayField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class NumberArrayField : public Field {
@@ -112,7 +108,7 @@ public:
   explicit NumberArrayField(const std::vector<double>& value);
   explicit NumberArrayField(std::vector<double>&& value);
   virtual ~NumberArrayField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class CollaboratorField : public Field {
@@ -131,7 +127,7 @@ public:
       std::string&& email,
       std::string&& user_id);
   virtual ~CollaboratorField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 class MultiCollaboratorField : public Field {
@@ -142,7 +138,7 @@ public:
   explicit MultiCollaboratorField(const std::vector<CollaboratorField>& value);
   explicit MultiCollaboratorField(std::vector<CollaboratorField>&& value);
   virtual ~MultiCollaboratorField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
 
 struct Attachment {
@@ -160,8 +156,8 @@ struct Attachment {
   };
   std::unordered_map<std::string, Thumbnail> thumbnails; // Empty if not an image
 
-  Attachment(std::shared_ptr<JSONObject> json);
-  std::shared_ptr<JSONObject> to_json() const;
+  Attachment(const phosg::JSON& json);
+  phosg::JSON to_json() const;
 };
 
 class AttachmentField : public Field {
@@ -172,10 +168,8 @@ public:
   explicit AttachmentField(const std::vector<Attachment>& value);
   explicit AttachmentField(std::vector<Attachment>&& value);
   virtual ~AttachmentField() = default;
-  virtual std::shared_ptr<JSONObject> to_json() const;
+  virtual phosg::JSON to_json() const;
 };
-
-
 
 struct Record {
   char id[18]; // always 17 chars long (+ \0)
@@ -183,19 +177,16 @@ struct Record {
   std::unordered_map<std::string, std::shared_ptr<Field>> fields;
 
   Record() = default;
-  Record(std::shared_ptr<const JSONObject> json);
+  Record(const phosg::JSON& json);
 
-  static std::shared_ptr<Field> parse_field(std::shared_ptr<JSONObject> json);
+  static std::shared_ptr<Field> parse_field(const phosg::JSON& json);
 
-  static std::shared_ptr<JSONObject> json_for_create(
-      const std::unordered_map<std::string, std::shared_ptr<Field>>& fields);
-  std::shared_ptr<JSONObject> json_for_create() const;
-  std::shared_ptr<JSONObject> json_for_update() const;
+  static phosg::JSON json_for_create(const std::unordered_map<std::string, std::shared_ptr<Field>>& fields);
+  phosg::JSON json_for_create() const;
+  phosg::JSON json_for_update() const;
 
   std::string str() const;
 };
-
-
 
 struct TableSchema {
   std::string name;
@@ -205,7 +196,7 @@ struct TableSchema {
     std::string name;
     std::string type;
     // TODO: probably we should parse these in the future
-    std::shared_ptr<JSONObject> options;
+    phosg::JSON options;
   };
   std::unordered_map<std::string, FieldSchema> fields;
 
@@ -215,8 +206,6 @@ struct TableSchema {
   };
   std::unordered_map<std::string, ViewSchema> views;
 };
-
-
 
 struct BaseInfo {
   std::string base_id;

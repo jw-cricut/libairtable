@@ -1,6 +1,7 @@
 #include "FieldTypes.hh"
 
 #include <phosg/Strings.hh>
+#include <fmt/core.h>
 
 using namespace std;
 
@@ -32,7 +33,7 @@ string format_airtable_time(uint64_t time) {
 
   string str(0x40, '\0');
   str.resize(strftime(const_cast<char*>(str.data()), str.size(), "%Y-%m-%dT%H:%M:%S", &t));
-  return std::format("{}.{:03}Z", str, (time % 1000000) / 1000);
+  return fmt::format("{}.{:03}Z", str, (time % 1000000) / 1000);
 }
 
 Field::Field(ValueType type) : type(type) {}
@@ -280,7 +281,7 @@ Record::Record(const phosg::JSON& json) {
 }
 
 string Record::str() const {
-  return std::format("Record(id={}, creation_time={}, json={})",
+  return fmt::format("Record(id={}, creation_time={}, json={})",
       this->id, format_airtable_time(this->creation_time), this->json_for_create().serialize());
 }
 
